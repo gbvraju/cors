@@ -28,7 +28,7 @@ maintainers accepted that behaviour (Q-PL-2).
 ## Consequences
 
 - `reviewers.py --check-codeowners` and `doctor.py` report no placeholder team.
-- `.github/CODEOWNERS` again matches `config/reviewers.yaml`, so reviewer groups own their path classes (REQ-005 AC2).
+- `.github/CODEOWNERS` again matches `config/reviewers.yaml`, so reviewer groups own their path classes (REQ-002 AC1: branch rules verifiable by the doctor).
 
 ## Residual
 
