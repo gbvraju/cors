@@ -1,6 +1,6 @@
 # ADR-0004: A preflight from an allowed origin is a requirement of this repository
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-16
 - Deciders: maintainers
 - Related: ADR-0001
@@ -24,6 +24,8 @@ status), but none is tied to a requirement.
 2. `trace_test.go` carries one test per acceptance criterion, marked `// REQ-101 AC1` and `// REQ-101 AC2`. The
    tests assert existing behaviour only. No product source file changes.
 3. The project requirement numbers start at `REQ-101`, as `docs/requirements.md` says.
+4. `REQ-101` is done on merge: the behaviour exists and `trace_test.go` proves AC1 and AC2, so its status line
+   changes from `planned` to `done`, on the maintainers' instruction.
 
 ## Consequences
 
