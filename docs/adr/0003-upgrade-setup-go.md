@@ -1,6 +1,6 @@
 # ADR-0003: Upgrade setup-go so the existing test matrix runs again
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-16
 - Deciders: maintainers
 - Related: ADR-0001, ADR-0002
