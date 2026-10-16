@@ -713,3 +713,54 @@ Expected `FAIL`/cannot-check lines: ruleset, required check, auto-merge, delete-
   first block by hand, or to change agk (adopt writes CODEOWNERS as a marked block, as it does for `.gitignore`)?
 - Q-PL-2: the brief expected `append .gitignore`; the fork has no `.gitignore`, so adopt created it. Confirm that this
   is acceptable for the zero-touch claim (no tracked file changed).
+
+## Fix list round 1 (2026-10-16)
+
+Maintainers' verdict: Q-PL-2 accepted (adopt creates `.gitignore` with markers when it is absent). Q-PL-1 is a kit
+defect, to be fixed in agk; for this PR, on the maintainers' instruction, the stale unmarked lines at the top of
+`.github/CODEOWNERS` (2 comment lines and 14 `@REPLACE-ME` lines) were deleted, keeping only the
+`# >>> agk` ... `# <<< agk` block.
+
+`python3 scripts/agk/reviewers.py --check-codeowners`:
+
+```
+ok reviewers (.github/CODEOWNERS matches)
+```
+
+`python3 scripts/agk/doctor.py --kit-root ../agk-kit` (verbatim; `placeholder-team-codeowners` is now ok):
+
+```
+agk doctor 0.11.0
+FAIL ruleset-missing error no ruleset targets the default branch
+  fix: create the ruleset of ADR-0001 decision 3: active; no bypass; target the default branch; restrict deletions; require linear history; require a pull request (dismiss stale approvals, no merge commits); block force pushes; required status check `governance`; classic branch protection is not read; use a ruleset (ADR-0001 decision 3)
+?? ruleset-enforcement error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-bypass error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-target error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-deletion error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-linear-history error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-force-push error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? ruleset-pull-request error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+?? required-check-governance error cannot check (no-ruleset)
+  to check: no ruleset targets the default branch; fix ruleset-missing or ruleset-target
+FAIL repo-auto-merge warn repository setting allow_auto_merge is off
+  fix: allow auto-merge
+FAIL repo-delete-branch warn repository setting delete_branch_on_merge is off
+  fix: auto-delete head branches
+ok placeholder-team-reviewers error config/reviewers.yaml has no placeholder team
+ok placeholder-team-codeowners error .github/CODEOWNERS has no placeholder team
+ok origin-head warn refs/remotes/origin/HEAD exists
+ok drift-workflow-file error .github/workflows/drift-audit.yml has a schedule
+ok drift-workflow-state error the drift-audit workflow is active
+ok kit-version warn the kit version equals version in agk.toml
+ok vendored-missing error every vendored file is present
+ok vendored-differs error every vendored file equals the kit's copy
+ok default-branch-config warn default_branch in agk.toml equals the repository's default branch
+summary: 9 ok, 3 fail, 8 cannot-check
+```
