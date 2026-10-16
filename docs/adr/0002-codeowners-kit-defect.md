@@ -1,10 +1,10 @@
 # ADR-0002: CODEOWNERS written without markers by adopt
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-16
 - Deciders: maintainers
 - Related: ADR-0001
-- Requirements: REQ-005
+- Requirements: REQ-002
 - Protected classes: .github/
 
 ## Context
