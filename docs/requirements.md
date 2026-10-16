@@ -21,3 +21,8 @@ Only the Status line may change without an ADR. `done` requires at least one tes
 
 - Acceptance: AC1 matrix generated; AC2 done requires a marker; AC3 matrix never committed
 - Status: planned
+
+### REQ-101 — A preflight request from an allowed origin gets the matching Access-Control-Allow-Origin header
+
+- Acceptance: AC1 an `OPTIONS` preflight from `http://foobar.com` with `Access-Control-Request-Method: GET`, to a handler that allows that origin and `GET`, gets status 204 and `Access-Control-Allow-Origin: http://foobar.com`; AC2 the same preflight from `http://barbaz.com`, which is not allowed, gets no `Access-Control-Allow-Origin` header
+- Status: done
