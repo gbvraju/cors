@@ -4,7 +4,7 @@
 - Date: 2026-10-17
 - Deciders: maintainers
 - Related: ADR-0001
-- Requirements: REQ-001
+- Requirements: REQ-001, REQ-002, REQ-003
 - Protected classes: `.github/`, `scripts/agk/`, `tests/kit/`, `agk.toml`
 
 ## Context
@@ -20,10 +20,12 @@ an ADR in the same pull request that names each class.
 
 1. Upgrade the installed kit to 0.16.0 with `python3 <kit>/scripts/agk/upgrade.py .`, and set the `version` line of
    `agk.toml` to `0.16.0`. Nothing else in `agk.toml` changes. The upgrade lists three new template keys
-   (`ac_coverage = "warn"`, `proof_timeout = 900`, `inbox_hours = 48`) and does not write them; they are not added here.
-2. The new workflow `.github/workflows/product-report.yml` (Mondays 07:13 UTC and by hand) is installed. Like the
+   (`ac_coverage = "warn"`, `proof_timeout = 900`, `inbox_hours = 48`) and does not write them; they are left unset and the defaults apply.
+2. The upgrade pull request advances `REQ-001`, `REQ-002` and `REQ-003`, as the adoption pull request did
+   (the maintainers' ruling).
+3. The new workflow `.github/workflows/product-report.yml` (Mondays 07:13 UTC and by hand) is installed. Like the
    drift-audit and metrics workflows, it writes issues with the workflow token.
-3. `.github/PULL_REQUEST_TEMPLATE.md` is replaced by the 0.16.0 template. No product file, test of the project, or
+4. `.github/PULL_REQUEST_TEMPLATE.md` is replaced by the 0.16.0 template. No product file, test of the project, or
    project workflow is changed.
 
 ## Consequences
