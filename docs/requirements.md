@@ -26,3 +26,8 @@ Only the Status line may change without an ADR. `done` requires at least one tes
 
 - Acceptance: AC1 an `OPTIONS` preflight from `http://foobar.com` with `Access-Control-Request-Method: GET`, to a handler that allows that origin and `GET`, gets status 204 and `Access-Control-Allow-Origin: http://foobar.com`; AC2 the same preflight from `http://barbaz.com`, which is not allowed, gets no `Access-Control-Allow-Origin` header
 - Status: done
+
+### REQ-102 — A preflight request for a method that is not allowed gets no allow headers
+
+- Acceptance: AC1 an `OPTIONS` preflight from `http://foobar.com` with `Access-Control-Request-Method: PUT`, to a handler that allows that origin and the methods `PUT` and `DELETE`, gets `Access-Control-Allow-Methods: PUT` and `Access-Control-Allow-Origin: http://foobar.com`; AC2 the same preflight with `Access-Control-Request-Method: PATCH`, which is not allowed, gets neither an `Access-Control-Allow-Methods` nor an `Access-Control-Allow-Origin` header
+- Status: planned
