@@ -27,11 +27,16 @@ an ADR in the same pull request that names each class.
    drift-audit and metrics workflows, it writes issues with the workflow token.
 4. `.github/PULL_REQUEST_TEMPLATE.md` is replaced by the 0.16.0 template. No product file, test of the project, or
    project workflow is changed.
+5. Before this pull request was opened the kit released 0.16.1 (agk `ff99d1e`), which moves the kit's Go fixture
+   tree under a `testdata` directory, because the old tree made `go test ./...` fail with `setup failed`. The
+   branch is upgraded from 0.16.0 to 0.16.1 with `upgrade.py` (17 files created, 1 replaced, none in conflict), and
+   the old tree `tests/kit/fixtures/facts/go-style/tree` is deleted with `git rm`, as `upgrade.py` lists it as
+   `removed-in-kit` and never deletes it. The version installed by this pull request is 0.16.1.
 
 ## Consequences
 
-- The checks, the doctor and the report scripts are those of 0.16.0; the kit's tests under `tests/kit/` grow with them.
-- `doctor.py` reads the installed version and the vendored files against the 0.16.0 kit.
+- The checks, the doctor and the report scripts are those of 0.16.1; the kit's tests under `tests/kit/` grow with them.
+- `doctor.py` reads the installed version and the vendored files against the 0.16.1 kit.
 - The weekly product report can run; its first output is a dry run, not a decision.
 
 ## Residual
