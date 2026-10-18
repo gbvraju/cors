@@ -1,6 +1,6 @@
 # ADR-0006: A preflight for a method that is not allowed gets no allow headers
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-18
 - Deciders: maintainers
 - Related: ADR-0004
@@ -23,6 +23,8 @@ method not in the list gets neither. The existing tests cover both (`TestSpec`, 
 2. `trace_methods_test.go` carries one test per acceptance criterion, marked `// REQ-102 AC1` and
    `// REQ-102 AC2`. The tests assert existing behaviour only. No product source file changes, so the pull request
    carries `Behaviour: unchanged`.
+3. `REQ-102` is done on merge: the behaviour exists and `trace_methods_test.go` proves AC1 and AC2, so its status line
+   changes from `planned` to `done`, on the maintainers' instruction.
 
 ## Consequences
 
