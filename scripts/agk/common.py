@@ -13,7 +13,15 @@ from pathlib import Path
 REQ_ID = re.compile(r"REQ-\d{3}")
 REQ_HEADER = re.compile(r"^###\s+(REQ-\d{3})\b")
 STATUS_LINE = re.compile(r"^- Status:\s*(.*?)\s*$")
+TITLE_TEXT = re.compile(r"^###\s+REQ-\d{3}\s+\u2014\s*(.*?)\s*$")
+ACCEPTANCE_LINE = re.compile(r"^- Acceptance:\s*(.*?)\s*$")
+AC_MARKER = re.compile(r"(?:^|(?<=; ))AC(\d+)\b")
+MARKER_RUN = re.compile(r"(REQ-\d{3}(?:[ ,/]+REQ-\d{3})*)(?: AC(\d+)\b)?")
+MARKER_SKIP_PARTS = frozenset({".git", "node_modules", "vendor", "target", "__pycache__", ".venv"})
 ALLOWED_STATUS = ("planned", "in-progress", "done")
+AC_COVERAGE = ("warn", "block")
+BEHAVIOUR_UNCHANGED = "Behaviour: unchanged"
+FENCE = re.compile(r"^\s*(```|~~~)")
 
 
 class CheckError(Exception):
@@ -135,18 +143,48 @@ def matches(path: str, entry: str) -> bool:
 
 
 def parse_requirements(text: str) -> list[dict]:
-    """Each: {id, status (str|None), status_count, line}."""
+    """Each: {id, status (str|None), status_count, line, title, acceptance (both str|None)}."""
     reqs: list[dict] = []
     for n, line in enumerate(text.splitlines(), 1):
         header = REQ_HEADER.match(line)
         if header:
-            reqs.append({"id": header.group(1), "status": None, "status_count": 0, "line": n})
+            title = TITLE_TEXT.match(line)
+            reqs.append(
+                {
+                    "id": header.group(1),
+                    "status": None,
+                    "status_count": 0,
+                    "line": n,
+                    "title": title.group(1) if title else None,
+                    "acceptance": None,
+                }
+            )
+            continue
+        if not reqs:
             continue
         status = STATUS_LINE.match(line)
-        if status and reqs:
+        if status:
             reqs[-1]["status"] = status.group(1)
             reqs[-1]["status_count"] += 1
+            continue
+        accept = ACCEPTANCE_LINE.match(line)
+        if accept and reqs[-1]["acceptance"] is None:
+            reqs[-1]["acceptance"] = accept.group(1)
     return reqs
+
+
+def parse_acceptance(text: str) -> list[tuple[str, str]]:
+    """The criteria of an `- Acceptance:` line as (`ACn`, text).
+
+    Split at each `AC<digits>` that starts the text or follows `; `; a text runs to the next
+    marker, with trailing `;` and spaces removed.
+    """
+    marks = list(AC_MARKER.finditer(text))
+    found = []
+    for i, mark in enumerate(marks):
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
+        found.append((f"AC{mark.group(1)}", text[mark.end() : end].strip().rstrip("; ").strip()))
+    return found
 
 
 DEFAULT_CONFIG = {
@@ -156,6 +194,9 @@ DEFAULT_CONFIG = {
     "project_tests": "",
     "test_patterns": ["test_*.py"],
     "mode": "",
+    "inbox_hours": 48,
+    "ac_coverage": "warn",
+    "proof_timeout": 900,
 }
 
 
@@ -202,6 +243,39 @@ def test_dirs(root: Path, cli_dirs: Sequence[str] | None = None) -> list[str]:
     return list(load_config(root)["test_dirs"])
 
 
+def _marker_files(
+    root: Path,
+    dirs: Sequence[str],
+    patterns: Sequence[str],
+    exclude: Sequence[str],
+    skip_parts: Sequence[str],
+) -> list[tuple[str, str]]:
+    """(relative path, text) of the readable files matching patterns under dirs, in sorted order.
+
+    Files under an excluded directory are skipped unless a listed dir is inside that directory.
+    """
+    skip = tuple(
+        e.strip("/") + "/"
+        for e in exclude
+        if not any(d.strip("/").startswith(e.strip("/")) for d in dirs)
+    )
+    found: list[tuple[str, str]] = []
+    for d in dirs:
+        base = root / d
+        if not base.is_dir():
+            continue
+        paths = {p for pattern in patterns for p in base.rglob(pattern)}
+        for path in sorted(paths):
+            rel = path.relative_to(root).as_posix()
+            if not path.is_file() or set(skip_parts) & set(Path(rel).parts) or rel.startswith(skip):
+                continue
+            try:
+                found.append((rel, path.read_text(encoding="utf-8")))
+            except (UnicodeDecodeError, OSError):
+                continue
+    return found
+
+
 def find_markers(
     root: Path,
     dirs: Sequence[str],
@@ -213,27 +287,34 @@ def find_markers(
     Files under an excluded directory are skipped unless a listed dir is inside that directory.
     """
     found: dict[str, set[str]] = {}
-    skip = tuple(
-        e.strip("/") + "/"
-        for e in exclude
-        if not any(d.strip("/").startswith(e.strip("/")) for d in dirs)
-    )
-    for d in dirs:
-        base = root / d
-        if not base.is_dir():
-            continue
-        paths = {p for pattern in patterns for p in base.rglob(pattern)}
-        for path in sorted(paths):
-            rel = path.relative_to(root).as_posix()
-            if not path.is_file() or "__pycache__" in path.parts or rel.startswith(skip):
-                continue
-            try:
-                text = path.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError):
-                continue
-            for req in set(REQ_ID.findall(text)):
-                found.setdefault(req, set()).add(rel)
+    for rel, text in _marker_files(root, dirs, patterns, exclude, ("__pycache__",)):
+        for req in set(REQ_ID.findall(text)):
+            found.setdefault(req, set()).add(rel)
     return {k: sorted(v) for k, v in found.items()}
+
+
+def find_ac_markers(
+    root: Path,
+    dirs: Sequence[str],
+    patterns: Sequence[str] = ("test_*.py",),
+    exclude: Sequence[str] = (),
+) -> list[dict]:
+    """Every marker as {req, ac (`ACn` or None), file, line}, sorted by file, line, req, ac.
+
+    A marker is a run of `REQ-nnn` tokens separated by spaces, commas or `/` followed by a space and
+    `AC<digits>` (the `ACn` attaches to every REQ of the run), or a `REQ-nnn` token alone.
+    """
+    found: set[tuple[str, int, str, str | None]] = set()
+    for rel, text in _marker_files(root, dirs, patterns, exclude, sorted(MARKER_SKIP_PARTS)):
+        for number, line in enumerate(text.splitlines(), 1):
+            for run_ in MARKER_RUN.finditer(line):
+                ac = f"AC{run_.group(2)}" if run_.group(2) else None
+                for req in REQ_ID.findall(run_.group(1)):
+                    found.add((rel, number, req, ac))
+    return [
+        {"req": req, "ac": ac, "file": rel, "line": number}
+        for rel, number, req, ac in sorted(found, key=lambda m: (m[0], m[1], m[2], m[3] or ""))
+    ]
 
 
 def markers_for(root: Path, cli_dirs: Sequence[str] | None = None) -> dict[str, list[str]]:
@@ -244,6 +325,77 @@ def markers_for(root: Path, cli_dirs: Sequence[str] | None = None) -> dict[str, 
     cfg = load_config(root)
     exclude = ["tests/kit"] if cfg["mode"] == "adopt" else []
     return find_markers(root, test_dirs(root, cli_dirs), cfg["test_patterns"], exclude)
+
+
+def ac_markers_for(root: Path, cli_dirs: Sequence[str] | None = None) -> list[dict]:
+    """The `REQ-nnn ACn` markers from the configured directories and patterns (as markers_for)."""
+    cfg = load_config(root)
+    exclude = ["tests/kit"] if cfg["mode"] == "adopt" else []
+    return find_ac_markers(root, test_dirs(root, cli_dirs), cfg["test_patterns"], exclude)
+
+
+def ac_coverage_mode(root: Path) -> str:
+    """`warn` or `block` from agk.toml; any other value is a refusal that names the setting."""
+    value = load_config(root)["ac_coverage"]
+    if value not in AC_COVERAGE:
+        raise CheckError("ac_coverage must be 'warn' or 'block' (setting: ac_coverage in agk.toml)")
+    return value
+
+
+def ac_shortfalls(reqs: list[dict], markers: list[dict]) -> list[tuple[str, str]]:
+    """(requirement id, message) for each `done` requirement criterion with no `REQ-nnn ACn` marker.
+
+    Also an acceptance line with no `ACn` token, and one that repeats a number. The message names
+    the requirement and the criterion id, never the criterion's text.
+    """
+    covered = {(m["req"], m["ac"]) for m in markers if m["ac"]}
+    found: list[tuple[str, str]] = []
+    for req in reqs:
+        if req["status"] != "done":
+            continue
+        rid = req["id"]
+        ids = [ac for ac, _ in parse_acceptance(req["acceptance"] or "")]
+        if not ids:
+            found.append((rid, f"{rid}: done requires an acceptance line with AC1, AC2, ..."))
+            continue
+        for ac in sorted({a for a in ids if ids.count(a) > 1}):
+            found.append((rid, f"{rid}: acceptance repeats {ac}"))
+        found += [
+            (rid, f"{rid}: done requires a test marker for {ac}")
+            for ac in dict.fromkeys(ids)
+            if (rid, ac) not in covered
+        ]
+    return found
+
+
+def stray_markers(reqs: list[dict], markers: list[dict]) -> list[dict]:
+    """The `REQ-nnn ACn` markers whose requirement does not exist or has no such criterion."""
+    criteria = {r["id"]: {ac for ac, _ in parse_acceptance(r["acceptance"] or "")} for r in reqs}
+    return [m for m in markers if m["ac"] and m["ac"] not in criteria.get(m["req"], set())]
+
+
+def behaviour_lines(body: str) -> list[str]:
+    """The lines of a pull request body that start with `Behaviour:`, outside fenced code."""
+    found, fenced = [], False
+    for line in body.splitlines():
+        if FENCE.match(line):
+            fenced = not fenced
+        elif not fenced and line.startswith("Behaviour:"):
+            found.append(line)
+    return found
+
+
+def declares_unchanged(body: str) -> bool:
+    """True when a line of the body, outside fenced code, is exactly `Behaviour: unchanged`."""
+    return BEHAVIOUR_UNCHANGED in behaviour_lines(body)
+
+
+def proof_timeout(root: Path) -> int:
+    """`proof_timeout` (seconds) from agk.toml; anything but a positive integer is a refusal."""
+    value = load_config(root)["proof_timeout"]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise CheckError("proof_timeout must be a positive integer (setting: proof_timeout)")
+    return value
 
 
 def run(name: str, fn: Callable[[], int]) -> int:

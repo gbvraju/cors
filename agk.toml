@@ -1,6 +1,6 @@
 # agk configuration (adopted repository). Read by the checks.
 mode = "adopt"
-version = "0.11.0"
+version = "0.16.1"
 installed = "2026-10-16"
 default_branch = "master"
 test_dirs = ["."]
