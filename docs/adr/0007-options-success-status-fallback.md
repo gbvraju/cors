@@ -1,6 +1,6 @@
 # ADR-0007: An out-of-range OptionsSuccessStatus falls back to 204
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-19
 - Deciders: maintainers
 - Related: ADR-0004
