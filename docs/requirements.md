@@ -36,3 +36,8 @@ Only the Status line may change without an ADR. `done` requires at least one tes
 
 - Acceptance: AC1 a handler configured with `OptionsSuccessStatus` below 100 (`-5` or `99`) answers a preflight request with status 204, through `Handler`, `HandlerFunc` and `ServeHTTP`, instead of panicking; AC2 the same for a value above 999 (`1000` or `5000`); AC3 a value from 100 to 999 is kept (`200`, `299` and `999` are used as given)
 - Status: done
+
+### REQ-104 — A request from an allowed origin gets the configured exposed headers
+
+- Acceptance: AC1 a `GET` from `http://foobar.com`, to a handler that allows that origin and has `ExposedHeaders` `X-Header-1` and `x-header-2`, gets `Access-Control-Expose-Headers: X-Header-1, X-Header-2` (names in canonical form) and `Access-Control-Allow-Origin: http://foobar.com`; AC2 the same `GET` to a handler with no `ExposedHeaders` gets no `Access-Control-Expose-Headers` header
+- Status: planned
