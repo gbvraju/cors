@@ -31,3 +31,8 @@ Only the Status line may change without an ADR. `done` requires at least one tes
 
 - Acceptance: AC1 an `OPTIONS` preflight from `http://foobar.com` with `Access-Control-Request-Method: PUT`, to a handler that allows that origin and the methods `PUT` and `DELETE`, gets `Access-Control-Allow-Methods: PUT` and `Access-Control-Allow-Origin: http://foobar.com`; AC2 the same preflight with `Access-Control-Request-Method: PATCH`, which is not allowed, gets neither an `Access-Control-Allow-Methods` nor an `Access-Control-Allow-Origin` header
 - Status: done
+
+### REQ-103 — An OptionsSuccessStatus that net/http rejects falls back to 204
+
+- Acceptance: AC1 a handler configured with `OptionsSuccessStatus` below 100 (`-5` or `99`) answers a preflight request with status 204, through `Handler`, `HandlerFunc` and `ServeHTTP`, instead of panicking; AC2 the same for a value above 999 (`1000` or `5000`); AC3 a value from 100 to 999 is kept (`200`, `299` and `999` are used as given)
+- Status: done

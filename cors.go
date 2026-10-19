@@ -92,7 +92,8 @@ type Options struct {
 	// process the OPTIONS method. Turn this on if your application handles OPTIONS.
 	OptionsPassthrough bool
 	// Provides a status code to use for successful OPTIONS requests.
-	// Default value is http.StatusNoContent (204).
+	// Default value is http.StatusNoContent (204), which is also used for a
+	// value below 100 or above 999.
 	OptionsSuccessStatus int
 	// Debugging flag adds additional output to debug server side CORS issues
 	Debug bool
@@ -216,7 +217,9 @@ func New(options Options) *Cors {
 	}
 
 	// Options Success Status Code
-	if options.OptionsSuccessStatus == 0 {
+	// net/http panics on a status code outside 100-999, so such a value
+	// (and the zero value) falls back to the default.
+	if options.OptionsSuccessStatus < 100 || options.OptionsSuccessStatus > 999 {
 		c.optionsSuccessStatus = http.StatusNoContent
 	} else {
 		c.optionsSuccessStatus = options.OptionsSuccessStatus
